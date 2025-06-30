@@ -99,6 +99,9 @@
               <ul class="ml-5 mt-1 list-disc text-sm text-gray-800">
                 ${itemsHtml}
               </ul>
+              <div class="text-right mt-2">
+                <button class="bg-red-500 text-white text-xs px-2 py-1 rounded" onclick="deleteBill('${key}', ${bill.id})">Delete Bill</button>
+              </div>
             </div>
           `;
         }).join("");
@@ -132,6 +135,16 @@
     if (!found) {
       container.innerHTML = "<p class='text-gray-600'>No matching customer found.</p>";
     }
+  }
+
+  function deleteBill(customerKey, billId) {
+    if (!confirm("Are you sure you want to delete this bill?")) return;
+
+    allBills = allBills.filter(bill => !(bill.id === billId && `${bill.name}___${bill.phone}` === customerKey));
+
+    localStorage.setItem("bills", JSON.stringify(allBills));
+
+    displayFilteredBills(document.getElementById("searchInput").value.trim().toLowerCase());
   }
 
   document.getElementById("searchInput").addEventListener("input", function () {
@@ -199,7 +212,6 @@ Total Amount: ₹${total}
 \nClick here to scan QR CODE: https://raw.githubusercontent.com/Ibra-anax/url/2dfc2006ea8d71c6538c38b1c54514511df31783/qr1.jpg
     `;
 
-
     if (navigator.share) {
       navigator.share({
         title: `Bill for ${name}`,
@@ -216,7 +228,6 @@ Total Amount: ₹${total}
 
   window.onload = loadBills;
 </script>
-
 
 </body>
 </html>
