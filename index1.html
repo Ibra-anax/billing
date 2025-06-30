@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IFA JUICE & BEKARY</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+  <header class="bg-indigo-600 text-white p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold">IFA JUICE & BEKARY</h1>
+    <nav class="space-x-4">
+      <a href="index.html" class="hover:text-blue-300">home</a>
+      <a href="index2.html" class="hover:text-blue-300">Saved Bill</a>
+    </nav>
+  </header>
+  <style>
+.input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 0.375rem;
+  outline: none;
+}
+
+.input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 1px #6366f1;
+}
+
+.btn-primary {
+  background-color: #6366f1;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+}
+.btn-secondary {
+  background-color: #f1b663;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+}
+.btn-third {
+  background-color: #e84f7d;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+}
+.btn-primary:hover {
+  background-color: #4841d2;
+}
+.btn-secondary:hover {
+  background-color: #cd9b55;
+}
+.btn-third:hover {
+  background-color: #c24167;
+}
+</style>
+  <main class="container mx-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <section class="bg-white p-6 rounded shadow">
+      <h2 class="text-xl font-semibold mb-4">Customer Bill</h2>
+      <div>
+        <input type="text" id="customerName" placeholder="Customer Name" class="input mb-2" />
+        <input type="text" id="customerPhone" placeholder="Customer Phone" class="input mb-2" />
+        
+        <div id="items-container" class="space-y-2 mb-2">
+          <div class="flex space-x-2">
+            <input type="text" placeholder="Item name" class="input item-name" />
+            <input type="txt" placeholder="Qty" value="1" class="input item-qty w-20" />
+            <input type="number" placeholder="Price" class="input item-price w-24" />
+            <button class="bg-red-500 text-white px-2 rounded delete-item">delete</button>
+          </div>
+        </div>
+        <button onclick="addItem()" class="bg-gray-200 px-3 py-1 rounded mb-4">+ Add Item</button>
+        <textarea id="notes" placeholder="Notes here...." class="input mb-2">
+Thank you !
+Visit again</textarea>
+
+        <div class="flex space-x-4">
+          <button onclick="previewBill()" class="btn-primary">Preview Bill</button>
+          <button onclick="clearForm()" class="btn-secondary">Clear Bill</button>
+          <button onclick="saveBill()" class="btn-third">Save Bill</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-white p-6 rounded shadow" id="invoiceSection">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="text-xl font-semibold">BILLPAY</h2>
+        <div class="text-right">
+          <div class="font-bold">IFA BEKARY & JUICE</div>
+          <p>+91 9535089710</p>
+        </div>
+      </div>
+      <div id="invoiceMeta" class="mb-2 text-sm">
+        <div>Date: <span id="invoiceDate"></span></div>
+        <div>SI.NO.: <span id="invoiceNumber"></span></div>
+        <div>Bill To: <span id="invoiceCustomer"></span></div>
+      </div>
+
+      <table class="w-full text-sm mb-2 border">
+        <thead>
+          <tr class="bg-gray-200">
+            <th class="p-1 border">Item</th>
+            <th class="p-1 border">Qty</th>
+            <th class="p-1 border">Price</th>
+            <th class="p-1 border">Total</th>
+          </tr>
+        </thead>
+        <tbody id="invoiceItems"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3" class="text-right p-1 border font-bold">Total:</td>
+            <td class="p-1 border" id="invoiceTotal">₹0</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <p><strong>Notes:</strong> <span id="invoiceNotes"></span></p>
+
+      <div class="flex justify-between mt-4">
+        <button onclick="shareBill()" class="bg-green-600 text-white px-4 py-1 rounded">share Bill</button>
+        <button onclick="printInvoice()" class="bg-blue-600 text-white px-4 py-1 rounded">Print Bill</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+
+    function addItem() {
+  const container = document.getElementById("items-container");
+  const div = document.createElement("div");
+  div.classList.add("flex", "space-x-2");
+
+  div.innerHTML = `
+    <input type="text" placeholder="Item name" class="input item-name" />
+    <input type="text" placeholder="Qty" value="1" class="input item-qty w-20" />
+    <input type="number" placeholder="Price" class="input item-price w-24" />
+    <button class="bg-red-500 text-white px-2 rounded delete-item">delete</button>
+  `;
+  container.appendChild(div);
+
+  div.querySelector(".delete-item").onclick = () => div.remove();
+}
+
+function clearForm() {
+  document.getElementById("customerName").value = "";
+  document.getElementById("customerPhone").value = "";
+  document.getElementById("notes").value = "";
+  document.getElementById("items-container").innerHTML = "";
+  addItem();
+}
+
+function previewBill() {
+  const name = document.getElementById("customerName").value;
+  const phone = document.getElementById("customerPhone").value;
+  const notes = document.getElementById("notes").value;
+
+  const items = Array.from(document.querySelectorAll("#items-container > div")).map(div => {
+    return {
+      name: div.querySelector(".item-name").value,
+      qty: +div.querySelector(".item-qty").value,
+      price: +div.querySelector(".item-price").value
+    };
+  });
+
+  const invoiceItems = document.getElementById("invoiceItems");
+  invoiceItems.innerHTML = "";
+
+  let total = 0;
+  items.forEach(item => {
+    const row = document.createElement("tr");
+    const itemTotal = item.qty * item.price;
+    total += itemTotal;
+    row.innerHTML = `
+      <td class="p-1 border">${item.name}</td>
+      <td class="p-1 border">${item.qty}</td>
+      <td class="p-1 border">₹${item.price}</td>
+      <td class="p-1 border">₹${itemTotal}</td>
+    `;
+    invoiceItems.appendChild(row);
+  });
+
+  document.getElementById("invoiceTotal").textContent = `₹${total}`;
+  document.getElementById("invoiceDate").textContent = new Date().toLocaleDateString();
+  document.getElementById("invoiceNumber").textContent = Math.floor(1000 + Math.random() * 9000);
+  document.getElementById("invoiceCustomer").textContent = `${name} (${phone})`;
+  document.getElementById("invoiceNotes").textContent = notes;
+}
+
+function saveBill() {
+  const name = document.getElementById("customerName").value;
+  const phone = document.getElementById("customerPhone").value;
+  const notes = document.getElementById("notes").value;
+
+  const items = Array.from(document.querySelectorAll("#items-container > div")).map(div => {
+    return {
+      name: div.querySelector(".item-name").value,
+      qty: +div.querySelector(".item-qty").value,
+      price: +div.querySelector(".item-price").value
+    };
+  });
+
+  if (!name || !phone || items.length === 0) {
+    alert("Please fill in all fields and add at least one item.");
+    return;
+  }
+
+  const bill = {
+    name,
+    phone,
+    notes,
+    items,
+    date: new Date().toLocaleString(),
+    id: Math.floor(1000 + Math.random() * 9000)
+  };
+
+  let bills = JSON.parse(localStorage.getItem("bills") || "[]");
+  bills.push(bill);
+  localStorage.setItem("bills", JSON.stringify(bills));
+  alert("Bill saved successfully!");
+}
+
+function generateQRCodeUPI(amount = '') {
+  const upiId = "329347689795920@cnrb";
+  const payeeName = "IFA JUICE & BAKERY";
+  const txnNote = "Payment for order";
+
+  // (Optional) generate a dynamic QR for internal use
+  const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(txnNote)}`;
+  const qrImageUrl = `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodeURIComponent(upiUrl)}`;
+
+  // But you want a static image always
+  document.getElementById("qrCodeImage").src = "qr1.jpg"; // your image
+}
+
+function shareBill() {
+  const name = document.getElementById("customerName").value.trim();
+  const phone = document.getElementById("customerPhone").value.trim();
+  const notes = document.getElementById("notes").value.trim();
+  const items = [...document.querySelectorAll("#items-container > div")].map(div => ({
+    name: div.querySelector(".item-name").value.trim(),
+    qty: +div.querySelector(".item-qty").value,
+    price: +div.querySelector(".item-price").value
+  }));
+
+  let total = 0;
+  let message = `IFA JUICE & BAKERY\n\nBill Details:\nName: ${name || '-'}\nPhone: ${phone || '-'}\nNotes: ${notes || '-'}\n\nItems:\n`;
+
+  items.forEach(item => {
+    const itemTotal = item.qty * item.price;
+    total += itemTotal;
+    message += `${item.name || 'Item'} - ${item.qty} x ₹${item.price} = ₹${itemTotal}\n`;
+  });
+
+  message += `\nTotal: ₹${total}\n`;
+  message += `number: 8618712921\n`;
+  message += `UPI ID: 329347689795920@cnrb\n`;
+  message += `click here to scan QR CODE: ${"https://raw.githubusercontent.com/Ibra-anax/url/2dfc2006ea8d71c6538c38b1c54514511df31783/qr1.jpg"}`; // Static QR image
+
+  // Try sharing
+  if (navigator.share) {
+    navigator.share({
+      title: 'IFA JUICE & BAKERY Bill',
+      text: message
+    }).catch(err => console.error("Share failed:", err));
+  } else {
+    alert(message);
+  }
+}
+
+
+function printInvoice() {
+  const original = document.body.innerHTML;
+  const invoiceHTML = document.getElementById("invoiceSection").outerHTML;
+  document.body.innerHTML = invoiceHTML;
+  window.print();
+  document.body.innerHTML = original;
+  location.reload();
+}
+    document.addEventListener("DOMContentLoaded", () => {
+        addItem(); // Add initial item row
+    });
+
+
+  </script>
+</body>
+</html>
