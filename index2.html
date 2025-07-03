@@ -24,20 +24,17 @@
 </head>
 <body class="bg-gray-100 min-h-screen">
 
-  <!-- Header -->
   <header class="bg-indigo-600 text-white p-4 flex justify-between items-center">
     <h1 class="text-xl font-bold">IFA BEKARY AND JUICE</h1>
     <nav class="space-x-4">
       <a href="index.html" class="hover:text-blue-300">Home</a>
-      <a href="index1.html" class="hover:text-blue-300">Create Bill</a>
+      <a href="index1.html" class="hover:text-blue-300">create bill</a>
     </nav>
   </header>
 
-  <!-- Main Content -->
   <main class="p-6">
     <h2 class="text-2xl font-bold mb-4">Saved Bills</h2>
 
-    <!-- Search -->
     <div class="relative mb-4">
       <input id="searchInput" placeholder="Search by name or phone..." class="w-full pl-10 p-2 border rounded" />
       <svg class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -45,11 +42,10 @@
       </svg>
     </div>
 
-    <!-- Bill display -->
     <div id="savedBillsContainer" class="space-y-4"></div>
+    <div id="pendingTotalDisplay" class="mt-6 text-right text-lg font-bold text-red-600"></div>
   </main>
 
-  <!-- Print container -->
   <div id="printSection" class="p-6 text-black hidden bg-white"></div>
 
 <script>
@@ -57,7 +53,14 @@ let allBills = [];
 let expandedCustomer = null;
 
 function loadBills() {
-  allBills = JSON.parse(localStorage.getItem("bills") || "[]");
+  const allKeys = Object.keys(localStorage);
+  allBills = [];
+  allKeys.forEach(key => {
+    if (key.startsWith("bills_")) {
+      const bills = JSON.parse(localStorage.getItem(key) || "[]");
+      allBills.push(...bills);
+    }
+  });
   displayFilteredBills("");
 }
 
@@ -71,11 +74,24 @@ function groupBillsByCustomer(bills) {
   return grouped;
 }
 
+function deleteBill(billId, customerKey) {
+  const grouped = groupBillsByCustomer(allBills);
+  const bills = grouped[customerKey];
+  const updatedBills = bills.filter(b => b.id !== billId);
+  allBills = allBills.filter(b => b.id !== billId);
+  const localKey = "bills_" + customerKey.replace("___", "_");
+  localStorage.setItem(localKey, JSON.stringify(updatedBills));
+  displayFilteredBills(document.getElementById("searchInput").value.trim().toLowerCase());
+}
+
 function displayFilteredBills(searchTerm) {
   const container = document.getElementById("savedBillsContainer");
+  const pendingTotalDisplay = document.getElementById("pendingTotalDisplay");
   container.innerHTML = "";
+  pendingTotalDisplay.textContent = "";
   const grouped = groupBillsByCustomer(allBills);
   let found = false;
+  let totalPendingAmount = 0;
 
   Object.entries(grouped).forEach(([key, bills]) => {
     const [name, phone] = key.split("___");
@@ -83,13 +99,14 @@ function displayFilteredBills(searchTerm) {
     if (searchTerm && !match) return;
 
     found = true;
-    if (expandedCustomer && expandedCustomer !== key) return;
-
     const div = document.createElement("div");
-    div.className = "p-4 bg-white rounded shadow cursor-pointer hover:bg-gray-50";
+    div.className = "p-4 bg-white rounded shadow hover:bg-gray-50";
 
     if (expandedCustomer === key) {
       let total = 0;
+      let totalAmountGiven = 0;
+      let totalFinal = 0;
+
       const billDetails = bills.map(bill => {
         const itemsHtml = (bill.items || []).map(item => {
           const itemTotal = item.qty * item.price;
@@ -97,33 +114,32 @@ function displayFilteredBills(searchTerm) {
           return `<li>${item.name} - ${item.qty} × ₹${item.price} = ₹${itemTotal}</li>`;
         }).join("");
 
-        const amountGiven = bill.amountGiven || 0;
-        const pending = total - amountGiven;
+        totalAmountGiven += bill.amountGiven || 0;
+        totalFinal += bill.final;
 
         return `
           <div class="mb-4 border-t pt-2">
-            <p><strong>Bill #${bill.id}</strong> | ${bill.date}</p>
+            <p><strong>Bill #${bill.id}</strong> | ${bill.date}
+            <button onclick="event.stopPropagation(); deleteBill('${bill.id}', '${key}')" class="ml-2 text-red-500 text-sm">[Delete]</button></p>
             <p><strong>Notes:</strong> ${bill.notes}</p>
             <ul class="ml-5 mt-1 list-disc text-sm text-gray-800">${itemsHtml}</ul>
-            <div class="mt-2" onclick="event.stopPropagation()">
-              <label class="block text-sm font-semibold">Amount Given:</label>
-              <input type="number" class="p-1 border rounded w-full mb-1" value="${amountGiven}" onchange="updateAmountGiven('${key}', ${bill.id}, this.value)">
-              <p class="text-sm text-gray-700">
-                ${pending <= 0 ? `Paid` : `Pending: ₹${pending} (Unpaid)`}
-              </p>
-            </div>
-            <div class="text-right mt-2" onclick="event.stopPropagation()">
-              <button class="bg-red-500 text-white text-xs px-2 py-1 rounded" onclick="event.stopPropagation(); deleteBill('${key}', ${bill.id})">Delete Bill</button>
-            </div>
           </div>
         `;
       }).join("");
 
+      const pending = totalFinal - totalAmountGiven;
+      totalPendingAmount += pending > 0 ? pending : 0;
+
       div.innerHTML = `
         <h3 class="text-lg font-bold mb-2">${name} (${phone})</h3>
         ${billDetails}
-        <div class="text-right mt-4 font-bold text-indigo-700">Total Amount: ₹${total}</div>
-        <div class="text-right mt-2" onclick="event.stopPropagation()">
+        <div class="mt-2 text-sm text-gray-700" onclick="event.stopPropagation()">
+          Amount Given:
+          <input type="number" value="${totalAmountGiven}" onchange="updateAmountGiven('${key}', this.value)" class="border p-1 rounded w-28 ml-2" />
+        </div>
+        <div class="mt-1 text-sm text-gray-700">${pending <= 0 ? `Paid` : `Pending: ₹${pending} (Unpaid)`}</div>
+        <div class="text-right mt-4 font-bold text-indigo-700">Total Amount: ₹${totalFinal}</div>
+        <div class="text-right mt-2">
           <button class="bg-blue-500 text-white px-3 py-1 rounded mr-2" onclick="event.stopPropagation(); printCustomer('${key}')">Print</button>
           <button class="bg-green-500 text-white px-3 py-1 rounded" onclick="event.stopPropagation(); shareCustomer('${key}')">Share</button>
         </div>
@@ -147,33 +163,36 @@ function displayFilteredBills(searchTerm) {
   if (!found) {
     container.innerHTML = "<p class='text-gray-600'>No matching customer found.</p>";
   }
+
+  if (totalPendingAmount > 0) {
+    pendingTotalDisplay.textContent = `Total Pending Amount: ₹${totalPendingAmount}`;
+  }
 }
 
-function updateAmountGiven(customerKey, billId, value) {
-  const amount = parseFloat(value) || 0;
-  allBills = allBills.map(bill => {
-    if (bill.id === billId && `${bill.name}___${bill.phone}` === customerKey) {
-      bill.amountGiven = amount;
+function updateAmountGiven(customerKey, newValue) {
+  const grouped = groupBillsByCustomer(allBills);
+  const bills = grouped[customerKey];
+  const amount = parseFloat(newValue) || 0;
+  const eachAmount = amount / bills.length;
+  const updatedBills = bills.map(b => ({ ...b, amountGiven: eachAmount }));
+  allBills = allBills.map(b => {
+    if (`${b.name}___${b.phone}` === customerKey) {
+      const match = updatedBills.find(ub => ub.id === b.id);
+      return match ? match : b;
     }
-    return bill;
+    return b;
   });
-  localStorage.setItem("bills", JSON.stringify(allBills));
-  displayFilteredBills(document.getElementById("searchInput").value.trim().toLowerCase());
-}
-
-function deleteBill(customerKey, billId) {
-  if (!confirm("Are you sure you want to delete this bill?")) return;
-  allBills = allBills.filter(bill => !(bill.id === billId && `${bill.name}___${bill.phone}` === customerKey));
-  localStorage.setItem("bills", JSON.stringify(allBills));
+  const localKey = "bills_" + customerKey.replace("___", "_");
+  localStorage.setItem(localKey, JSON.stringify(updatedBills));
   displayFilteredBills(document.getElementById("searchInput").value.trim().toLowerCase());
 }
 
 function printCustomer(key) {
   const [name, phone] = key.split("___");
   const bills = groupBillsByCustomer(allBills)[key];
-
+  let totalAmountGiven = 0;
+  let totalFinal = 0;
   let html = `<div class="text-black"><h2 class="text-xl font-bold mb-2">IFA BEKARY AND JUICE</h2><p><strong>Customer:</strong> ${name}</p><p><strong>Phone:</strong> ${phone}</p><hr class="my-2"/>`;
-
   bills.forEach(bill => {
     let billTotal = 0;
     const itemsHtml = bill.items.map(item => {
@@ -181,25 +200,21 @@ function printCustomer(key) {
       billTotal += itemTotal;
       return `<li>${item.name} - ${item.qty} × ₹${item.price} = ₹${itemTotal}</li>`;
     }).join("");
-
-    const amountGiven = bill.amountGiven || 0;
-    const pending = billTotal - amountGiven;
-
+    totalFinal += bill.final;
+    totalAmountGiven += bill.amountGiven || 0;
     html += `
       <div class="mt-4">
         <p><strong>Bill #${bill.id}</strong> | ${bill.date}</p>
         <ul class="ml-4 list-disc">${itemsHtml}</ul>
         <p><strong>Total:</strong> ₹${billTotal}</p>
-        <p><strong>Amount Given:</strong> ₹${amountGiven}</p>
-        ${pending > 0 ? `<p><strong>Pending:</strong> ₹${pending} (Unpaid)</p>` : `<p><strong>Status:</strong> Paid</p>`}
         <p><strong>Notes:</strong> ${bill.notes}</p>
       </div>
     `;
   });
-
-  html += `<p class="mt-4"><strong>UPI ID:</strong> 329347689795920@cnrb</p>
-  <img src="https://raw.githubusercontent.com/Ibra-anax/url/2dfc2006ea8d71c6538c38b1c54514511df31783/qr1.jpg" alt="QR Code" class="w-32 mt-2"/></div>`;
-
+  const pending = totalFinal - totalAmountGiven;
+  html += `<p class="mt-4 font-bold">Amount Given: ₹${totalAmountGiven}</p>`;
+  html += pending > 0 ? `<p><strong>Pending:</strong> ₹${pending} (Unpaid)</p>` : `<p><strong>Status:</strong> Paid</p>`;
+  html += `<p class="mt-4"><strong>UPI ID:</strong> 329347689795920@cnrb</p><img src="https://raw.githubusercontent.com/Ibra-anax/url/2dfc2006ea8d71c6538c38b1c54514511df31783/qr1.jpg" alt="QR Code" class="w-32 mt-2"/></div>`;
   const printSection = document.getElementById("printSection");
   printSection.innerHTML = html;
   printSection.classList.remove("hidden");
@@ -211,7 +226,8 @@ function shareCustomer(key) {
   const [name, phone] = key.split("___");
   const bills = groupBillsByCustomer(allBills)[key];
   let shareText = `IFA BEKARY AND JUICE\nCustomer: ${name}\nPhone: ${phone}\n`;
-
+  let totalAmountGiven = 0;
+  let totalFinal = 0;
   bills.forEach(bill => {
     let billTotal = 0;
     const items = (bill.items || []).map(item => {
@@ -219,15 +235,14 @@ function shareCustomer(key) {
       billTotal += itemTotal;
       return `${item.name} - ${item.qty} × ₹${item.price} = ₹${itemTotal}`;
     }).join("\n");
-
-    const amountGiven = bill.amountGiven || 0;
-    const pending = billTotal - amountGiven;
-
-    shareText += `\nBill #${bill.id} | ${bill.date}\nItems:\n${items}\nTotal Amount: ₹${billTotal}\nAmount Given: ₹${amountGiven}\n${pending > 0 ? `Pending: ₹${pending} (Unpaid)` : `Status: Paid`}\nNotes: ${bill.notes}\n`;
+    totalFinal += bill.final;
+    totalAmountGiven += bill.amountGiven || 0;
+    shareText += `\nBill #${bill.id} | ${bill.date}\nItems:\n${items}\nTotal Amount: ₹${billTotal}\nNotes: ${bill.notes}\n`;
   });
-
-  shareText += `\nUPI ID: 329347689795920@cnrb\nClick here to scan QR CODE: https://raw.githubusercontent.com/Ibra-anax/url/2dfc2006ea8d71c6538c38b1c54514511df31783/qr1.jpg`;
-
+  const pending = totalFinal - totalAmountGiven;
+  shareText += `\nAmount Given: ₹${totalAmountGiven}`;
+  shareText += pending > 0 ? `\nPending: ₹${pending} (Unpaid)` : `\nStatus: Paid`;
+  shareText += `\n\nUPI ID: 329347689795920@cnrb\nClick here to scan QR CODE: https://raw.githubusercontent.com/Ibra-anax/url/2dfc2006ea8d71c6538c38b1c54514511df31783/qr1.jpg`;
   if (navigator.share) {
     navigator.share({ title: `Bill for ${name}`, text: shareText }).catch(console.error);
   } else {
