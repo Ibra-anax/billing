@@ -6,40 +6,11 @@
   <title>IFA BEKARY AND JUICE</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .input {
-      width: 100%;
-      padding: 0.5rem;
-      border: 1px solid #ddd;
-      border-radius: 0.375rem;
-      outline: none;
-    }
-
-    .input:focus {
-      border-color: #6366f1;
-      box-shadow: 0 0 0 1px #6366f1;
-    }
-
-    .btn-primary {
-      background-color: #6366f1;
-      color: white;
-      padding: 0.5rem 1rem;
-      border-radius: 0.375rem;
-    }
-
-    .btn-secondary {
-      background-color: #f1b663;
-      color: white;
-      padding: 0.5rem 1rem;
-      border-radius: 0.375rem;
-    }
-
-    .btn-third {
-      background-color: #e84f7d;
-      color: white;
-      padding: 0.5rem 1rem;
-      border-radius: 0.375rem;
-    }
-
+    .input { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 0.375rem; outline: none; }
+    .input:focus { border-color: #6366f1; box-shadow: 0 0 0 1px #6366f1; }
+    .btn-primary { background-color: #6366f1; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; }
+    .btn-secondary { background-color: #f1b663; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; }
+    .btn-third { background-color: #e84f7d; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; }
     .btn-primary:hover { background-color: #4841d2; }
     .btn-secondary:hover { background-color: #cd9b55; }
     .btn-third:hover { background-color: #c24167; }
@@ -70,9 +41,7 @@
       </div>
 
       <button onclick="addItem()" class="bg-gray-200 px-3 py-1 rounded mb-4">+ Add Item</button>
-
       <input type="number" id="subtractAmount" placeholder="Subtract Amount (optional)" class="input mb-2" />
-
       <textarea id="notes" placeholder="Notes here...." class="input mb-2">Thank you! Visit again</textarea>
 
       <div class="flex space-x-4">
@@ -115,7 +84,6 @@
       </table>
 
       <p><strong>Notes:</strong> <span id="invoiceNotes"></span></p>
-
       <div class="flex justify-between mt-4">
         <button onclick="shareBill()" class="bg-green-600 text-white px-4 py-1 rounded">Share Bill</button>
         <button onclick="printInvoice()" class="bg-blue-600 text-white px-4 py-1 rounded">Print Bill</button>
@@ -177,7 +145,6 @@
       });
 
       const finalAmount = total - subtractAmount;
-
       document.getElementById("invoiceTotal").textContent = `₹${total}`;
       document.getElementById("invoiceSubtract").textContent = `₹${subtractAmount}`;
       document.getElementById("invoiceFinal").textContent = `₹${finalAmount}`;
@@ -188,7 +155,40 @@
     }
 
     function saveBill() {
-      alert("Saving bill feature will be applied as per your main system.");
+      const name = document.getElementById("customerName").value.trim();
+      const phone = document.getElementById("customerPhone").value.trim();
+      if (!name || !phone) return alert("Enter customer name and phone");
+
+      const items = [...document.querySelectorAll("#items-container > div")].map(div => ({
+        name: div.querySelector(".item-name").value,
+        qty: +div.querySelector(".item-qty").value,
+        price: +div.querySelector(".item-price").value
+      }));
+
+      const subtractAmount = parseFloat(document.getElementById("subtractAmount").value) || 0;
+      const notes = document.getElementById("notes").value;
+      let total = items.reduce((sum, item) => sum + item.qty * item.price, 0);
+      const final = total - subtractAmount;
+
+      const bill = {
+        name,
+        phone,
+        items,
+        subtractAmount,
+        total,
+        final,
+        notes,
+        date: new Date().toLocaleString(),
+        id: Date.now()
+      };
+
+      const key = `bills_${name}_${phone}`;
+      const existing = JSON.parse(localStorage.getItem(key)) || [];
+      existing.push(bill);
+      localStorage.setItem(key, JSON.stringify(existing));
+      alert("Bill saved successfully!");
+      window.location.href = "index2.html";
+
     }
 
     function shareBill() {
@@ -213,7 +213,6 @@
       });
 
       const final = total - subtractAmount;
-
       message += `\nTotal: ₹${total}\nSubtracted: ₹${subtractAmount}\nFinal Amount: ₹${final}\nNotes: ${notes}\n\nUPI ID: 329347689795920@cnrb\nScan QR: https://raw.githubusercontent.com/Ibra-anax/url/2dfc2006ea8d71c6538c38b1c54514511df31783/qr1.jpg`;
 
       if (navigator.share) {
