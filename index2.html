@@ -117,10 +117,15 @@
         const balance = totalFinal - totalAmountGiven;
         message += `\nAmount Given: ₹${totalAmountGiven}\nGrand Total: ₹${totalFinal}\nBalance: ₹${balance}\n\nUPI ID: 329347689795920@cnrb\nScan QR: https://raw.githubusercontent.com/Ibra-anax/url/2dfc2006ea8d71c6538c38b1c54514511df31783/qr1.jpg`;
 
-        if (navigator.share) {
+        if (navigator.share)
+         {
           navigator.share({ title: "Customer Bill", text: message });
-        } else {
+          console.log("Bill shared successfully.");
+        } 
+        else
+         {
           prompt("Copy and share the bill:", message);
+          console.log("Sharing not supported in this browser.");
         }
       }
 
