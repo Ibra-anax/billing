@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
-  <!-- Firebase CDN with compatibility layer -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js" defer></script>
 </head>
@@ -85,44 +84,44 @@
         const eachAmount = amount / bills.length;
         const updatedBills = bills.map(b => ({ ...b, amountGiven: eachAmount }));
 
-        // Save updatedBills into localStorage
         const localKey = "bills_" + customerKey.replace("___", "_");
         localStorage.setItem(localKey, JSON.stringify(updatedBills));
 
-        // Reload allBills from localStorage again to reflect updated amountGiven
         loadBills();
-      }
-
-      function exportToPDF(customerKey) {
-        const element = document.getElementById(`pdfContent_${customerKey}`);
-        const [name] = customerKey.split("___");
-        const opt = {
-          margin: 0.5,
-          filename: `Bill_${name}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2 },
-          jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-        };
-        html2pdf().set(opt).from(element).save();
       }
 
       function printCustomerBill(customerKey) {
         const content = document.getElementById(`pdfContent_${customerKey}`).outerHTML;
         const original = document.body.innerHTML;
         document.body.innerHTML = content;
-        const printStyles = `
-          <style>
-            body { font-family: Arial, sans-serif; }
-            h1, h2, h3 { text-align: center; }
-            .text-right { text-align: right; }
-            .font-bold { font-weight: bold; }
-            .bg-white { background-color: white; }
-            .rounded { border-radius: 0.25rem; }
-          </style>
-        `;
         window.print();
         document.body.innerHTML = original;
         location.reload();
+      }
+
+      function shareCustomerBill(customerKey) {
+        const grouped = groupBillsByCustomer(allBills);
+        const bills = grouped[customerKey];
+        const [name, phone] = customerKey.split("___");
+        let message = `IFA BAKERY AND JUICE\nContact:\n+91 9535089710\n\nCustomer: ${name}\nPhone: ${phone}\n`;
+
+        let totalAmountGiven = 0;
+        let totalFinal = 0;
+
+        bills.forEach(bill => {
+          totalAmountGiven += bill.amountGiven || 0;
+          totalFinal += bill.final;
+          message += `\n#${bill.id} | ${bill.date}\nNotes: ${bill.notes}\nTotal: ₹${bill.final}\n`;
+        });
+
+        const balance = totalFinal - totalAmountGiven;
+        message += `\nAmount Given: ₹${totalAmountGiven}\nGrand Total: ₹${totalFinal}\nBalance: ₹${balance}\n\nUPI ID: 329347689795920@cnrb\nScan QR: https://raw.githubusercontent.com/Ibra-anax/url/2dfc2006ea8d71c6538c38b1c54514511df31783/qr1.jpg`;
+
+        if (navigator.share) {
+          navigator.share({ title: "Customer Bill", text: message });
+        } else {
+          prompt("Copy and share the bill:", message);
+        }
       }
 
       function displayFilteredBills(searchTerm) {
@@ -169,6 +168,7 @@
                   <div class="space-x-2">
                     <a href="index1.html?name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}" class="bg-yellow-500 text-white px-3 py-1 rounded">Add Bill</a>
                     <button onclick="printCustomerBill('${key}'); event.stopPropagation();" class="bg-blue-600 text-white px-3 py-1 rounded">Print</button>
+                    <button onclick="shareCustomerBill('${key}'); event.stopPropagation();" class="bg-green-600 text-white px-3 py-1 rounded">Share</button>
                   </div>
                 </div>
                 ${billList}
@@ -208,6 +208,7 @@
       window.deleteSingleBill = deleteSingleBill;
       window.printCustomerBill = printCustomerBill;
       window.updateAmountGiven = updateAmountGiven;
+      window.shareCustomerBill = shareCustomerBill;
 
       loadBills();
     });
