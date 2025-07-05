@@ -186,6 +186,7 @@
       const existing = JSON.parse(localStorage.getItem(key)) || [];
       existing.push(bill);
       localStorage.setItem(key, JSON.stringify(existing));
+      db.ref(`bills/${customerKey}/${billId}`).set(bill);
       alert("Bill saved successfully!");
       window.location.href = "index2.html";
 
@@ -204,7 +205,7 @@
       }));
 
       let total = 0;
-      let message = `IFA BEKARY AND JUICE\nCustomer: ${name}\nPhone: ${phone}\nItems:\n`;
+      let message = `IFA BEKARY AND JUICE\n Contact:\n+91 9535089710\n\n Customer: ${name}\nPhone: ${phone}\nItems:\n`;
 
       items.forEach(item => {
         const itemTotal = item.qty * item.price;
