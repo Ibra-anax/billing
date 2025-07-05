@@ -110,6 +110,16 @@
         const content = document.getElementById(`pdfContent_${customerKey}`).outerHTML;
         const original = document.body.innerHTML;
         document.body.innerHTML = content;
+        const printStyles = `
+          <style>
+            body { font-family: Arial, sans-serif; }
+            h1, h2, h3 { text-align: center; }
+            .text-right { text-align: right; }
+            .font-bold { font-weight: bold; }
+            .bg-white { background-color: white; }
+            .rounded { border-radius: 0.25rem; }
+          </style>
+        `;
         window.print();
         document.body.innerHTML = original;
         location.reload();
