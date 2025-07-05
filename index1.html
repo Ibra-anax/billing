@@ -34,7 +34,7 @@
       <div id="items-container" class="space-y-2 mb-2">
         <div class="flex space-x-2">
           <input type="text" placeholder="Item name" class="input item-name" />
-          <input type="text" placeholder="Qty" value="1" class="input item-qty w-20" />
+          <input type="tel" placeholder="Qty" value="1" class="input item-qty w-20" />
           <input type="number" placeholder="Price" class="input item-price w-24" />
           <button class="bg-red-500 text-white px-2 rounded delete-item">Delete</button>
         </div>
@@ -233,5 +233,13 @@
 
     document.addEventListener("DOMContentLoaded", addItem);
   </script>
+  <script>
+  window.onload = () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('name')) document.getElementById('customerName').value = params.get('name');
+    if (params.has('phone')) document.getElementById('customerPhone').value = params.get('phone');
+  };
+</script>
+
 </body>
 </html>
