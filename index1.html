@@ -158,7 +158,7 @@
       const name = document.getElementById("customerName").value.trim();
       const phone = document.getElementById("customerPhone").value.trim();
       if (!name || !phone) return alert("Enter customer name and phone");
-
+      else alert("Bill saved successfully!");
       const items = [...document.querySelectorAll("#items-container > div")].map(div => ({
         name: div.querySelector(".item-name").value,
         qty: +div.querySelector(".item-qty").value,
@@ -179,7 +179,7 @@
         final,
         notes,
         date: new Date().toLocaleString(),
-        id: Date.now()
+        id: Math.floor(1000 + Math.random() * 9000)
       };
 
       const key = `bills_${name}_${phone}`;
@@ -187,7 +187,6 @@
       existing.push(bill);
       localStorage.setItem(key, JSON.stringify(existing));
       db.ref(`bills/${customerKey}/${billId}`).set(bill);
-      alert("Bill saved successfully!");
       window.location.href = "index2.html";
 
     }
