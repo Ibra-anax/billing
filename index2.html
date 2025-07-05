@@ -2,263 +2,205 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>IFA BEKARY AND JUICE</title>
+  <title>IFA BAKERY AND JUICE - Saved Bills</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    @media print {
-      body * {
-        visibility: hidden;
-      }
-      #printSection, #printSection * {
-        visibility: visible;
-      }
-      #printSection {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-      }
-    }
-  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
+  <!-- Firebase CDN with compatibility layer -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js" defer></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
-
   <header class="bg-indigo-600 text-white p-4 flex justify-between items-center">
-    <h1 class="text-xl font-bold">IFA BEKARY AND JUICE</h1>
+    <h1 class="text-xl font-bold">IFA BAKERY AND JUICE</h1>
     <nav class="space-x-4">
       <a href="index.html" class="hover:text-blue-300">Home</a>
-      <a href="index1.html" class="hover:text-blue-300">create bill</a>
+      <a href="index1.html" class="hover:text-blue-300">Create Bill</a>
     </nav>
   </header>
 
   <main class="p-6">
     <h2 class="text-2xl font-bold mb-4">Saved Bills</h2>
-
-    <div class="relative mb-4">
-      <input id="searchInput" placeholder="Search by name or phone..." class="w-full pl-10 p-2 border rounded" />
-      <svg class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z" />
-      </svg>
-    </div>
-
+    <input id="searchInput" placeholder="Search by name or phone..." class="w-full p-2 border rounded mb-4" />
     <div id="savedBillsContainer" class="space-y-4"></div>
     <div id="pendingTotalDisplay" class="mt-6 text-right text-lg font-bold text-red-600"></div>
   </main>
 
-  <div id="printSection" class="p-6 text-black hidden bg-white"></div>
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      const firebaseConfig = {
+        apiKey: "AIzaSyCUk2M8HUWB2JsLlTB8q8WyZlD_qgOhKXo",
+        authDomain: "billing-25855.firebaseapp.com",
+        projectId: "billing-25855",
+        storageBucket: "billing-25855.appspot.com",
+        messagingSenderId: "859747720443",
+        appId: "1:859747720443:web:c8eacc73c6b6564219245e",
+        measurementId: "G-G79EC8SP9S"
+      };
 
-<script>
-let allBills = [];
-let expandedCustomer = null;
+      firebase.initializeApp(firebaseConfig);
+      const database = firebase.database();
 
-function loadBills() {
-  const allKeys = Object.keys(localStorage);
-  allBills = [];
-  allKeys.forEach(key => {
-    if (key.startsWith("bills_")) {
-      const bills = JSON.parse(localStorage.getItem(key) || "[]");
-      allBills.push(...bills);
-    }
-  });
-  displayFilteredBills("");
-}
+      let allBills = [];
+      let expandedCustomer = null;
 
-function groupBillsByCustomer(bills) {
-  const grouped = {};
-  bills.forEach(bill => {
-    const key = `${bill.name}___${bill.phone}`;
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(bill);
-  });
-  return grouped;
-}
+      function loadBills() {
+        const allKeys = Object.keys(localStorage);
+        allBills = [];
+        allKeys.forEach(key => {
+          if (key.startsWith("bills_")) {
+            try {
+              const bills = JSON.parse(localStorage.getItem(key) || "[]");
+              allBills.push(...bills);
+            } catch (e) {
+              console.error("Invalid JSON in localStorage for key", key);
+            }
+          }
+        });
+        displayFilteredBills("");
+      }
 
-function deleteBill(billId, customerKey) {
-  const grouped = groupBillsByCustomer(allBills);
-  const bills = grouped[customerKey];
-  const updatedBills = bills.filter(b => b.id !== billId);
-  allBills = allBills.filter(b => b.id !== billId);
-  const localKey = "bills_" + customerKey.replace("___", "_");
-  localStorage.setItem(localKey, JSON.stringify(updatedBills));
-  displayFilteredBills(document.getElementById("searchInput").value.trim().toLowerCase());
-}
+      function groupBillsByCustomer(bills) {
+        const grouped = {};
+        bills.forEach(bill => {
+          const key = `${bill.name}___${bill.phone}`;
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(bill);
+        });
+        return grouped;
+      }
 
-function displayFilteredBills(searchTerm) {
-  const container = document.getElementById("savedBillsContainer");
-  const pendingTotalDisplay = document.getElementById("pendingTotalDisplay");
-  container.innerHTML = "";
-  pendingTotalDisplay.textContent = "";
-  const grouped = groupBillsByCustomer(allBills);
-  let found = false;
-  let totalPendingAmount = 0;
+      function deleteSingleBill(customerKey, billId) {
+        const localKey = "bills_" + customerKey.replace("___", "_");
+        let bills = JSON.parse(localStorage.getItem(localKey)) || [];
+        bills = bills.filter(b => b.id !== billId);
+        localStorage.setItem(localKey, JSON.stringify(bills));
+        loadBills();
+      }
 
-  Object.entries(grouped).forEach(([key, bills]) => {
-    const [name, phone] = key.split("___");
-    const match = name.toLowerCase().includes(searchTerm) || phone.includes(searchTerm);
-    if (searchTerm && !match) return;
+      function updateAmountGiven(customerKey, newValue) {
+        const grouped = groupBillsByCustomer(allBills);
+        const bills = grouped[customerKey];
+        const amount = parseFloat(newValue) || 0;
+        const eachAmount = amount / bills.length;
+        const updatedBills = bills.map(b => ({ ...b, amountGiven: eachAmount }));
 
-    found = true;
-    const div = document.createElement("div");
-    div.className = "p-4 bg-white rounded shadow hover:bg-gray-50";
+        // Save updatedBills into localStorage
+        const localKey = "bills_" + customerKey.replace("___", "_");
+        localStorage.setItem(localKey, JSON.stringify(updatedBills));
 
-    if (expandedCustomer === key) {
-      let total = 0;
-      let totalAmountGiven = 0;
-      let totalFinal = 0;
+        // Reload allBills from localStorage again to reflect updated amountGiven
+        loadBills();
+      }
 
-      const billDetails = bills.map(bill => {
-        const itemsHtml = (bill.items || []).map(item => {
-          const itemTotal = item.qty * item.price;
-          total += itemTotal;
-          return `<li>${item.name} - ${item.qty} × ₹${item.price} = ₹${itemTotal}</li>`;
-        }).join("");
+      function exportToPDF(customerKey) {
+        const element = document.getElementById(`pdfContent_${customerKey}`);
+        const [name] = customerKey.split("___");
+        const opt = {
+          margin: 0.5,
+          filename: `Bill_${name}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(element).save();
+      }
 
-        totalAmountGiven += bill.amountGiven || 0;
-        totalFinal += bill.final;
+      function printCustomerBill(customerKey) {
+        const content = document.getElementById(`pdfContent_${customerKey}`).outerHTML;
+        const original = document.body.innerHTML;
+        document.body.innerHTML = content;
+        window.print();
+        document.body.innerHTML = original;
+        location.reload();
+      }
 
-        return `
-          <div class="mb-4 border-t pt-2">
-            <p><strong>Bill #${bill.id}</strong> | ${bill.date}
-            <button onclick="event.stopPropagation(); deleteBill('${bill.id}', '${key}')" class="ml-2 text-red-500 text-sm">[Delete]</button></p>
-            <p><strong>Notes:</strong> ${bill.notes}</p>
-            <ul class="ml-5 mt-1 list-disc text-sm text-gray-800">${itemsHtml}</ul>
-          </div>
-        `;
-      }).join("");
+      function displayFilteredBills(searchTerm) {
+        const container = document.getElementById("savedBillsContainer");
+        const pendingTotalDisplay = document.getElementById("pendingTotalDisplay");
+        container.innerHTML = "";
+        pendingTotalDisplay.textContent = "";
 
-      const pending = totalFinal - totalAmountGiven;
-      totalPendingAmount += pending > 0 ? pending : 0;
+        const grouped = groupBillsByCustomer(allBills);
+        let totalPendingAmount = 0;
 
-      div.innerHTML = `
-        <h3 class="text-lg font-bold mb-2">${name} (${phone})</h3>
-        ${billDetails}
-        <div class="mt-2 text-sm text-gray-700" onclick="event.stopPropagation()">
-          Amount Given:
-          <input type="number" value="${totalAmountGiven}" onchange="updateAmountGiven('${key}', this.value)" class="border p-1 rounded w-28 ml-2" />
-        </div>
-        <div class="mt-1 text-sm text-gray-700">${pending <= 0 ? `Paid` : `Pending: ₹${pending} (Unpaid)`}</div>
-        <div class="text-right mt-4 font-bold text-indigo-700">Total Amount: ₹${totalFinal}</div>
-        <div class="text-right mt-2">
-          <button class="bg-blue-500 text-white px-3 py-1 rounded mr-2" onclick="event.stopPropagation(); printCustomer('${key}')">Print</button>
-          <button class="bg-green-500 text-white px-3 py-1 rounded" onclick="event.stopPropagation(); shareCustomer('${key}')">Share</button>
-        </div>
-      `;
-    } else {
-      div.innerHTML = `
-        <h3 class="text-lg font-bold mb-2">${name} (${phone})</h3>
-        <p class="text-gray-600">Total Bills: ${bills.length}</p>
-        <p class="text-blue-600 text-sm">Click to view details</p>
-      `;
-    }
+        Object.entries(grouped).forEach(([key, bills]) => {
+          const [name, phone] = key.split("___");
+          const match = name.toLowerCase().includes(searchTerm) || phone.includes(searchTerm);
+          if (searchTerm && !match) return;
 
-    div.addEventListener("click", () => {
-      expandedCustomer = expandedCustomer === key ? null : key;
-      displayFilteredBills(searchTerm);
+          const div = document.createElement("div");
+          div.className = "p-4 bg-white rounded shadow hover:bg-gray-50";
+
+          if (expandedCustomer === key) {
+            let totalAmountGiven = 0;
+            let totalFinal = 0;
+
+            const billList = bills.map(bill => {
+              totalAmountGiven += bill.amountGiven || 0;
+              totalFinal += bill.final;
+              return `
+                <div class="mb-2 border-b pb-2">
+                  <p class="text-sm">#${bill.id} | ${bill.date}</p>
+                  <p class="text-sm text-gray-600">Notes: ${bill.notes}</p>
+                  <p class="font-semibold text-sm">Total: ₹${bill.final}</p>
+                  <button onclick="deleteSingleBill('${key}', ${bill.id}); event.stopPropagation();" class="bg-red-500 text-white px-2 py-0.5 mt-1 rounded text-xs">Delete Bill</button>
+                </div>
+              `;
+            }).join("");
+
+            const pending = totalFinal - totalAmountGiven;
+            totalPendingAmount += Math.max(0, pending);
+
+            div.innerHTML = `
+              <div id="pdfContent_${key}">
+                <div class="flex justify-between items-center mb-2">
+                  <h3 class="text-lg font-bold">${name} (${phone})</h3>
+                  <div class="space-x-2">
+                    <a href="index1.html?name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}" class="bg-yellow-500 text-white px-3 py-1 rounded">Add Bill</a>
+                    <button onclick="printCustomerBill('${key}'); event.stopPropagation();" class="bg-blue-600 text-white px-3 py-1 rounded">Print</button>
+                  </div>
+                </div>
+                ${billList}
+                <div class="mt-2 text-sm text-gray-700">
+                  Amount Given:
+                  <input type="tel" value="${totalAmountGiven}" class="border p-1 rounded w-32 ml-2" onchange="updateAmountGiven('${key}', this.value)" onclick="event.stopPropagation()" />
+                </div>
+                <div class="text-right mt-3 font-bold text-green-700">Grand Total: ₹${totalFinal}</div>
+                <div class="text-right mt-3 font-bold text-red-700">Balance: ₹${pending}</div>
+              </div>
+            `;
+          } else {
+            div.innerHTML = `
+              <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold">${name} (${phone})</h3>
+                <a href="index1.html?name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}" class="bg-yellow-500 text-white px-3 py-1 rounded">Add Bill</a>
+              </div>
+              <p class="text-gray-600 text-sm">Total Bills: ${bills.length}</p>
+              <p class="text-blue-600 text-sm">Click to view details</p>
+            `;
+          }
+
+          div.addEventListener("click", () => {
+            expandedCustomer = expandedCustomer === key ? null : key;
+            displayFilteredBills(searchTerm);
+          });
+
+          container.appendChild(div);
+        });
+      }
+
+      document.getElementById("searchInput").addEventListener("input", function () {
+        expandedCustomer = null;
+        displayFilteredBills(this.value.trim().toLowerCase());
+      });
+
+      window.deleteSingleBill = deleteSingleBill;
+      window.printCustomerBill = printCustomerBill;
+      window.updateAmountGiven = updateAmountGiven;
+
+      loadBills();
     });
-
-    container.appendChild(div);
-  });
-
-  if (!found) {
-    container.innerHTML = "<p class='text-gray-600'>No matching customer found.</p>";
-  }
-
-  if (totalPendingAmount > 0) {
-    pendingTotalDisplay.textContent = `Total Pending Amount: ₹${totalPendingAmount}`;
-  }
-}
-
-function updateAmountGiven(customerKey, newValue) {
-  const grouped = groupBillsByCustomer(allBills);
-  const bills = grouped[customerKey];
-  const amount = parseFloat(newValue) || 0;
-  const eachAmount = amount / bills.length;
-  const updatedBills = bills.map(b => ({ ...b, amountGiven: eachAmount }));
-  allBills = allBills.map(b => {
-    if (`${b.name}___${b.phone}` === customerKey) {
-      const match = updatedBills.find(ub => ub.id === b.id);
-      return match ? match : b;
-    }
-    return b;
-  });
-  const localKey = "bills_" + customerKey.replace("___", "_");
-  localStorage.setItem(localKey, JSON.stringify(updatedBills));
-  displayFilteredBills(document.getElementById("searchInput").value.trim().toLowerCase());
-}
-
-function printCustomer(key) {
-  const [name, phone] = key.split("___");
-  const bills = groupBillsByCustomer(allBills)[key];
-  let totalAmountGiven = 0;
-  let totalFinal = 0;
-  let html = `<div class="text-black"><h2 class="text-xl font-bold mb-2">IFA BEKARY AND JUICE</h2><p><strong>Customer:</strong> ${name}</p><p><strong>Phone:</strong> ${phone}</p><hr class="my-2"/>`;
-  bills.forEach(bill => {
-    let billTotal = 0;
-    const itemsHtml = bill.items.map(item => {
-      const itemTotal = item.qty * item.price;
-      billTotal += itemTotal;
-      return `<li>${item.name} - ${item.qty} × ₹${item.price} = ₹${itemTotal}</li>`;
-    }).join("");
-    totalFinal += bill.final;
-    totalAmountGiven += bill.amountGiven || 0;
-    html += `
-      <div class="mt-4">
-        <p><strong>Bill #${bill.id}</strong> | ${bill.date}</p>
-        <ul class="ml-4 list-disc">${itemsHtml}</ul>
-        <p><strong>Total:</strong> ₹${billTotal}</p>
-        <p><strong>Notes:</strong> ${bill.notes}</p>
-      </div>
-    `;
-  });
-  const pending = totalFinal - totalAmountGiven;
-  html += `<p class="mt-4 font-bold">Amount Given: ₹${totalAmountGiven}</p>`;
-  html += pending > 0 ? `<p><strong>Pending:</strong> ₹${pending} (Unpaid)</p>` : `<p><strong>Status:</strong> Paid</p>`;
-  html += `<p class="mt-4"><strong>UPI ID:</strong> 329347689795920@cnrb</p><img src="https://raw.githubusercontent.com/Ibra-anax/url/2dfc2006ea8d71c6538c38b1c54514511df31783/qr1.jpg" alt="QR Code" class="w-32 mt-2"/></div>`;
-  const printSection = document.getElementById("printSection");
-  printSection.innerHTML = html;
-  printSection.classList.remove("hidden");
-  window.print();
-  printSection.classList.add("hidden");
-}
-
-function shareCustomer(key) {
-  const [name, phone] = key.split("___");
-  const bills = groupBillsByCustomer(allBills)[key];
-  let shareText = `IFA BEKARY AND JUICE\nCustomer: ${name}\nPhone: ${phone}\n`;
-  let totalAmountGiven = 0;
-  let totalFinal = 0;
-  bills.forEach(bill => {
-    let billTotal = 0;
-    const items = (bill.items || []).map(item => {
-      const itemTotal = item.qty * item.price;
-      billTotal += itemTotal;
-      return `${item.name} - ${item.qty} × ₹${item.price} = ₹${itemTotal}`;
-    }).join("\n");
-    totalFinal += bill.final;
-    totalAmountGiven += bill.amountGiven || 0;
-    shareText += `\nBill #${bill.id} | ${bill.date}\nItems:\n${items}\nTotal Amount: ₹${billTotal}\nNotes: ${bill.notes}\n`;
-  });
-  const pending = totalFinal - totalAmountGiven;
-  shareText += `\nAmount Given: ₹${totalAmountGiven}`;
-  shareText += pending > 0 ? `\nPending: ₹${pending} (Unpaid)` : `\nStatus: Paid`;
-  shareText += `\n\nUPI ID: 329347689795920@cnrb\nClick here to scan QR CODE: https://raw.githubusercontent.com/Ibra-anax/url/2dfc2006ea8d71c6538c38b1c54514511df31783/qr1.jpg`;
-  if (navigator.share) {
-    navigator.share({ title: `Bill for ${name}`, text: shareText }).catch(console.error);
-  } else {
-    navigator.clipboard.writeText(shareText).then(() => {
-      alert("Customer bill copied to clipboard!");
-    });
-  }
-}
-
-document.getElementById("searchInput").addEventListener("input", function () {
-  expandedCustomer = null;
-  displayFilteredBills(this.value.trim().toLowerCase());
-});
-
-window.onload = loadBills;
-</script>
-
+  </script>
 </body>
 </html>
