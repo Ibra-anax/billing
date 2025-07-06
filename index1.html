@@ -1,10 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="transition duration-300">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>IFA BEKARY AND JUICE</title>
+  <title>IFA BAKERY AND JUICE</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    }
+  </script>
   <style>
     .input { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 0.375rem; outline: none; }
     .input:focus { border-color: #6366f1; box-shadow: 0 0 0 1px #6366f1; }
@@ -14,35 +19,47 @@
     .btn-primary:hover { background-color: #4841d2; }
     .btn-secondary:hover { background-color: #cd9b55; }
     .btn-third:hover { background-color: #c24167; }
+
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #invoiceSection, #invoiceSection * {
+        visibility: visible;
+      }
+      #invoiceSection {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white !important;
+        color: black !important;
+      }
+    }
   </style>
 </head>
-<body class="bg-gray-100">
+
+<body class="bg-gray-100 dark:bg-gray-900 dark:text-white transition duration-300">
   <header class="bg-indigo-600 text-white p-4 flex justify-between items-center">
-    <h1 class="text-xl font-bold">IFA BEKARY AND JUICE</h1>
-    <nav class="space-x-4">
+    <h1 class="text-xl font-bold">IFA BAKERY AND JUICE</h1>
+    <nav class="space-x-4 flex items-center">
       <a href="index.html" class="hover:text-blue-300">Home</a>
       <a href="index2.html" class="hover:text-blue-300">Saved Bills</a>
+      <button id="darkModeToggle" class="text-white hover:text-blue-300 flex items-center">Switch Mode</button>
     </nav>
   </header>
 
   <main class="container mx-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <section class="bg-white p-6 rounded shadow">
+    <!-- Customer Bill Section -->
+    <section class="bg-white dark:bg-gray-800 p-6 rounded shadow">
       <h2 class="text-xl font-semibold mb-4">Customer Bill</h2>
-      <input type="text" id="customerName" placeholder="Customer Name" class="input mb-2" />
-      <input type="text" id="customerPhone" placeholder="Customer Phone" class="input mb-2" />
+      <input type="text" id="customerName" placeholder="Customer Name" class="input mb-2 dark:bg-gray-700 dark:text-white" />
+      <input type="text" id="customerPhone" placeholder="Customer Phone" class="input mb-2 dark:bg-gray-700 dark:text-white" />
 
-      <div id="items-container" class="space-y-2 mb-2">
-        <div class="flex space-x-2">
-          <input type="text" placeholder="Item name" class="input item-name" />
-          <input type="tel" placeholder="Qty" value="1" class="input item-qty w-20" />
-          <input type="number" placeholder="Price" class="input item-price w-24" />
-          <button class="bg-red-500 text-white px-2 rounded delete-item">Delete</button>
-        </div>
-      </div>
-
-      <button onclick="addItem()" class="bg-gray-200 px-3 py-1 rounded mb-4">+ Add Item</button>
-      <input type="number" id="subtractAmount" placeholder="Subtract Amount (optional)" class="input mb-2" />
-      <textarea id="notes" placeholder="Notes here...." class="input mb-2">Thank you! Visit again</textarea>
+      <div id="items-container" class="space-y-2 mb-2"></div>
+      <button onclick="addItem()" class="bg-gray-200 px-3 py-1 rounded mb-4 dark:bg-gray-600 dark:text-white">+ Add Item</button>
+      <input type="number" id="subtractAmount" placeholder="Subtract Amount (optional)" class="input mb-2 dark:bg-gray-700 dark:text-white" />
+      <textarea id="notes" placeholder="Notes here...." class="input mb-2 dark:bg-gray-700 dark:text-white">Thank you! Visit again</textarea>
 
       <div class="flex space-x-4">
         <button onclick="previewBill()" class="btn-primary">Preview Bill</button>
@@ -51,11 +68,12 @@
       </div>
     </section>
 
-    <section class="bg-white p-6 rounded shadow" id="invoiceSection">
+    <!-- Invoice Section -->
+    <section class="bg-white dark:bg-gray-800 p-6 rounded shadow" id="invoiceSection">
       <div class="flex justify-between items-center mb-2">
         <h2 class="text-xl font-semibold">BILLPAY</h2>
         <div class="text-right">
-          <div class="font-bold">IFA BEKARY AND JUICE</div>
+          <div class="font-bold">IFA BAKERY AND JUICE</div>
           <p>+91 9535089710</p>
         </div>
       </div>
@@ -66,20 +84,20 @@
         <div>Bill To: <span id="invoiceCustomer"></span></div>
       </div>
 
-      <table class="w-full text-sm mb-2 border">
+      <table class="w-full text-sm mb-2 border dark:border-gray-600">
         <thead>
-          <tr class="bg-gray-200">
-            <th class="p-1 border">Item</th>
-            <th class="p-1 border">Qty</th>
-            <th class="p-1 border">Price</th>
-            <th class="p-1 border">Total</th>
+          <tr class="bg-gray-200 dark:bg-gray-700">
+            <th class="p-1 border dark:border-gray-600">Item</th>
+            <th class="p-1 border dark:border-gray-600">Qty</th>
+            <th class="p-1 border dark:border-gray-600">Price</th>
+            <th class="p-1 border dark:border-gray-600">Total</th>
           </tr>
         </thead>
         <tbody id="invoiceItems"></tbody>
         <tfoot>
-          <tr><td colspan="3" class="text-right p-1 border font-bold">Total:</td><td class="p-1 border" id="invoiceTotal">₹0</td></tr>
-          <tr><td colspan="3" class="text-right p-1 border font-bold">Subtracted:</td><td class="p-1 border" id="invoiceSubtract">₹0</td></tr>
-          <tr><td colspan="3" class="text-right p-1 border font-bold">Final Amount:</td><td class="p-1 border" id="invoiceFinal">₹0</td></tr>
+          <tr><td colspan="3" class="text-right p-1 border dark:border-gray-600 font-bold">Total:</td><td class="p-1 border dark:border-gray-600" id="invoiceTotal">₹0</td></tr>
+          <tr><td colspan="3" class="text-right p-1 border dark:border-gray-600 font-bold">Subtracted:</td><td class="p-1 border dark:border-gray-600" id="invoiceSubtract">₹0</td></tr>
+          <tr><td colspan="3" class="text-right p-1 border dark:border-gray-600 font-bold">Final Amount:</td><td class="p-1 border dark:border-gray-600" id="invoiceFinal">₹0</td></tr>
         </tfoot>
       </table>
 
@@ -97,9 +115,9 @@
       const div = document.createElement("div");
       div.className = "flex space-x-2";
       div.innerHTML = `
-        <input type="text" placeholder="Item name" class="input item-name" />
-        <input type="text" placeholder="Qty" value="1" class="input item-qty w-20" />
-        <input type="number" placeholder="Price" class="input item-price w-24" />
+        <input type="text" placeholder="Item name" class="input item-name dark:bg-gray-700 dark:text-white" />
+        <input type="text" placeholder="Qty" value="1" class="input item-qty w-20 dark:bg-gray-700 dark:text-white" />
+        <input type="number" placeholder="Price" class="input item-price w-24 dark:bg-gray-700 dark:text-white" />
         <button class="bg-red-500 text-white px-2 rounded delete-item">Delete</button>
       `;
       container.appendChild(div);
@@ -136,10 +154,10 @@
         const itemTotal = item.qty * item.price;
         total += itemTotal;
         row.innerHTML = `
-          <td class="p-1 border">${item.name}</td>
-          <td class="p-1 border">${item.qty}</td>
-          <td class="p-1 border">₹${item.price}</td>
-          <td class="p-1 border">₹${itemTotal}</td>
+          <td class="p-1 border dark:border-gray-600">${item.name}</td>
+          <td class="p-1 border dark:border-gray-600">${item.qty}</td>
+          <td class="p-1 border dark:border-gray-600">₹${item.price}</td>
+          <td class="p-1 border dark:border-gray-600">₹${itemTotal}</td>
         `;
         invoiceItems.appendChild(row);
       });
@@ -159,6 +177,7 @@
       const phone = document.getElementById("customerPhone").value.trim();
       if (!name || !phone) return alert("Enter customer name and phone");
       else alert("Bill saved successfully!");
+
       const items = [...document.querySelectorAll("#items-container > div")].map(div => ({
         name: div.querySelector(".item-name").value,
         qty: +div.querySelector(".item-qty").value,
@@ -171,24 +190,15 @@
       const final = total - subtractAmount;
 
       const bill = {
-        name,
-        phone,
-        items,
-        subtractAmount,
-        total,
-        final,
-        notes,
-        date: new Date().toLocaleString(),
-        id: Math.floor(1000 + Math.random() * 9000)
+        name, phone, items, subtractAmount, total, final, notes,
+        date: new Date().toLocaleString(), id: Math.floor(1000 + Math.random() * 9000)
       };
 
       const key = `bills_${name}_${phone}`;
       const existing = JSON.parse(localStorage.getItem(key)) || [];
       existing.push(bill);
       localStorage.setItem(key, JSON.stringify(existing));
-      db.ref(`bills/${customerKey}/${billId}`).set(bill);
       window.location.href = "index2.html";
-
     }
 
     function shareBill() {
@@ -204,7 +214,7 @@
       }));
 
       let total = 0;
-      let message = `IFA BEKARY AND JUICE\n Contact:\n+91 9535089710\n\n Customer: ${name}\nPhone: ${phone}\nItems:\n`;
+      let message = `IFA BAKERY AND JUICE\nContact: +91 9535089710\n\nCustomer: ${name}\nPhone: ${phone}\nItems:\n`;
 
       items.forEach(item => {
         const itemTotal = item.qty * item.price;
@@ -223,23 +233,25 @@
     }
 
     function printInvoice() {
-      const original = document.body.innerHTML;
-      const section = document.getElementById("invoiceSection").outerHTML;
-      document.body.innerHTML = section;
       window.print();
-      document.body.innerHTML = original;
-      location.reload();
     }
 
-    document.addEventListener("DOMContentLoaded", addItem);
-  </script>
-  <script>
-  window.onload = () => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.has('name')) document.getElementById('customerName').value = params.get('name');
-    if (params.has('phone')) document.getElementById('customerPhone').value = params.get('phone');
-  };
-</script>
+    document.addEventListener("DOMContentLoaded", () => {
+      addItem();
+      const toggle = document.getElementById("darkModeToggle");
+      const icon = document.getElementById("themeIcon");
 
+      toggle.addEventListener("click", () => {
+        document.documentElement.classList.toggle("dark");
+        const isDark = document.documentElement.classList.contains("dark");
+      });
+    });
+
+    window.onload = () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('name')) document.getElementById('customerName').value = params.get('name');
+      if (params.has('phone')) document.getElementById('customerPhone').value = params.get('phone');
+    };
+  </script>
 </body>
 </html>
