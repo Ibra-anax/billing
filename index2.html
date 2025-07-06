@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    tailwind.config = {
-      darkMode: 'class',
-    };
+    tailwind.config = { darkMode: 'class' };
   </script>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-black dark:text-white min-h-screen transition-all duration-300">
+
+  <!-- HEADER -->
   <header class="bg-indigo-600 text-white p-4 flex justify-between items-center">
     <h1 class="text-xl font-bold">IFA BAKERY AND JUICE</h1>
     <div class="flex items-center space-x-4">
@@ -23,8 +23,10 @@
     </div>
   </header>
 
+  <!-- MAIN -->
   <main class="p-6">
     <h2 class="text-2xl font-bold mb-4">Saved Bills</h2>
+
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
       <input id="searchInput" placeholder="Search by name or phone..." class="w-full sm:w-1/2 p-2 border rounded text-black" />
       <select id="statusFilter" class="p-2 border rounded text-black">
@@ -33,233 +35,234 @@
         <option value="Unpaid">Unpaid</option>
       </select>
     </div>
+
     <div id="savedBillsContainer" class="space-y-4"></div>
   </main>
 
-  <script>
-    const QR_URL = "https://raw.githubusercontent.com/Ibra-anax/url/2dfc2006ea8d71c6538c38b1c54514511df31783/qr1.jpg";
-    const UPI_ID = "329347689795920@cnrb";
-    const expandedKeys = new Set();
-    const shownHistory = new Set();
+<script>
+  const expandedKeys = new Set();
+  const shownHistory = new Set();
+  const UPI_ID = "329347689795920@cnrb";
+  const QR_URL = "https://raw.githubusercontent.com/Ibra-anax/url/2dfc2006ea8d71c6538c38b1c54514511df31783/qr1.jpg";
 
-    function formatBillMessage(bills, name, phone, amountGiven) {
-      const lines = [
-        `IFA BAKERY AND JUICE`,
-        `Contact:\n+91 9535089710`,
-        `\nCustomer: ${name}`,
-        `Phone: ${phone}\n`
-      ];
+  function formatBillMessage(bills, name, phone, amountGiven) {
+    let lines = [
+      "IFA BAKERY AND JUICE",
+      "Contact: +91 9535089710",
+      `Customer: ${name}`,
+      `Phone: ${phone}`,
+      ""
+    ];
 
-      let grandTotal = 0;
-      bills.forEach(b => {
-        lines.push(`#${b.id} | ${b.date}\nNotes: ${b.notes}\nTotal: ₹${b.final}\n`);
-        grandTotal += b.final;
-      });
-
-      const pending = Math.max(0, grandTotal - amountGiven);
-      lines.push(`Amount Given: ₹${amountGiven}`);
-      lines.push(`Grand Total: ₹${grandTotal}`);
-      lines.push(`Balance: ₹${pending}`);
-      lines.push(`\nUPI ID: ${UPI_ID}`);
-      lines.push(`Scan QR: ${QR_URL}`);
-
-      const history = bills[0].history || [];
-      if (history.length) {
-        lines.push(`\n-----------  Payment History ------------`);
-        history.reverse().forEach((h, idx) => {
-          lines.push(`${idx + 1}) ₹${h.amount}  paid on  ${new Date(h.date).toLocaleString()} \n Status: ${h.status} \n Pending: ₹${h.pending}\n `);
-        });
-      }
-
-      return lines.join("\n");
-    }
-
-    function loadBills() {
-      const container = document.getElementById("savedBillsContainer");
-      const searchVal = document.getElementById("searchInput").value.toLowerCase();
-      const statusFilter = document.getElementById("statusFilter").value;
-      container.innerHTML = "";
-
-      const keys = Object.keys(localStorage).filter(k => k.startsWith("bills_"));
-
-      keys.forEach(key => {
-        const bills = JSON.parse(localStorage.getItem(key) || "[]");
-        if (!bills.length) return;
-
-        const { name, phone } = bills[0];
-        const uniqueKey = `${name}_${phone}`;
-        const isExpanded = expandedKeys.has(uniqueKey);
-        const isHistoryShown = shownHistory.has(uniqueKey);
-
-        const amountGiven = bills[0].amountGiven || 0;
-        const grandTotal = bills.reduce((sum, b) => sum + b.final, 0);
-        const pending = Math.max(0, grandTotal - amountGiven);
-        const status = amountGiven >= grandTotal ? "Paid" : "Unpaid";
-        const updatedAt = bills[0].updatedAt ? new Date(bills[0].updatedAt).toLocaleString() : "N/A";
-        const history = bills[0].history || [];
-
-        if (searchVal && !name.toLowerCase().includes(searchVal) && !phone.includes(searchVal)) return;
-        if (statusFilter && status !== statusFilter) return;
-
-        const billList = bills.map(b => `
-          <tr class="border-b text-sm">
-            <td class="p-2">#${b.id}<br>${b.date}</td>
-            <td class="p-2">${b.notes}</td>
-            <td class="p-2">${b.items.map(i => `${i.name} x${i.qty}`).join(", ")}</td>
-            <td class="p-2 text-right">₹${b.final}</td>
-            <td class="p-2 text-right"><button onclick="deleteBill('${key}', ${b.id})" class="text-red-500 text-xs">Delete</button></td>
-          </tr>
-        `).join("");
-
-        const historyRows = history.map((h, index) => `
-          <tr>
-            <td class="p-2">₹${h.amount}</td>
-            <td class="p-2">${new Date(h.date).toLocaleString()}</td>
-            <td class="p-2">₹${h.pending}</td>
-            <td class="p-2">
-              <select onchange="updateHistoryStatus('${key}', ${index}, this.value)" class="text-sm border rounded p-1 text-black">
-                <option value="Paid" ${h.status === 'Paid' ? 'selected' : ''}>Paid</option>
-                <option value="Unpaid" ${h.status === 'Unpaid' ? 'selected' : ''}>Unpaid</option>
-              </select>
-            </td>
-          </tr>
-        `).reverse().join("");
-
-        const div = document.createElement("div");
-        div.className = "bg-white dark:bg-gray-800 rounded shadow p-4";
-        div.innerHTML = `
-          <div class="flex justify-between items-center cursor-pointer" onclick="toggleExpand('${uniqueKey}')">
-            <h3 class="text-lg font-bold">${name} (${phone})</h3>
-            <span class="text-sm ${status === 'Paid' ? 'text-green-600' : 'text-red-600'}">${status}</span>
-          </div>
-
-          <div id="details_${uniqueKey}" class="${isExpanded ? '' : 'hidden'} mt-4 space-y-4">
-            <div class="flex justify-between items-center">
-              <a href="index1.html?name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}" class="bg-yellow-500 text-white px-3 py-1 rounded">Add Bill</a>
-              <span class="text-sm text-gray-500 dark:text-gray-300">Last Updated: ${updatedAt}</span>
-            </div>
-
-            <table class="w-full border text-sm border-gray-300 dark:border-gray-600">
-              <thead class="bg-gray-100 dark:bg-gray-700">
-                <tr>
-                  <th class="p-2">Bill ID / Date</th>
-                  <th class="p-2">Notes</th>
-                  <th class="p-2">Items</th>
-                  <th class="p-2 text-right">Total</th>
-                  <th class="p-2">Action</th>
-                </tr>
-              </thead>
-              <tbody>${billList}</tbody>
-            </table>
-
-            <div class="text-sm mt-2">
-              <label class="font-semibold">Given Amount:</label>
-              <input type="number" class="border p-1 rounded w-32 ml-2 text-black" value="${amountGiven}" onchange="updateAmount('${key}', this.value)" />
-            </div>
-
-            <div class="grid grid-cols-3 gap-4 text-sm">
-              <div><span class="font-semibold">Total:</span> ₹${grandTotal}</div>
-              <div><span class="font-semibold">Pending:</span> ₹${pending}</div>
-              <div><span class="font-semibold ${status === 'Paid' ? 'text-green-600' : 'text-red-600'}">Status:</span> ${status}</div>
-            </div>
-
-            <div class="flex gap-2 mt-2">
-              <button onclick="shareText(\`${formatBillMessage(bills, name, phone, amountGiven)}\`)" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">Share</button>
-              <button onclick="printText(\`${formatBillMessage(bills, name, phone, amountGiven)}\`)" class="bg-green-600 text-white px-3 py-1 rounded text-sm">Print</button>
-              <button onclick="toggleHistory('${uniqueKey}')" class="bg-gray-600 text-white px-3 py-1 rounded text-sm">History</button>
-            </div>
-
-            <div id="history_${uniqueKey}" class="${isHistoryShown ? '' : 'hidden'}">
-              <h4 class="font-semibold mt-4 mb-2">Payment History</h4>
-              <table class="w-full text-left border border-gray-200 dark:border-gray-600 text-sm">
-                <thead class="bg-gray-100 dark:bg-gray-700">
-                  <tr><th class="p-2">Given</th>\n<th class="p-2">Date</th>\n<th class="p-2">Status</th>\n<th class="p-2">Pending</th></tr>
-                </thead>
-                <tbody>${historyRows}</tbody>
-              </table>
-            </div>
-          </div>
-        `;
-
-        container.appendChild(div);
-      });
-    }
-
-    function updateAmount(key, value) {
-      const bills = JSON.parse(localStorage.getItem(key));
-      const amount = parseFloat(value) || 0;
-      const time = new Date().toISOString();
-      const grandTotal = bills.reduce((sum, b) => sum + b.final, 0);
-      const pending = Math.max(0, grandTotal - amount);
-      const status = amount >= grandTotal ? "Paid" : "Unpaid";
-      const history = bills[0].history || [];
-      history.push({ amount, date: time, pending, status });
-      bills[0] = { ...bills[0], amountGiven: amount, updatedAt: time, history };
-      localStorage.setItem(key, JSON.stringify(bills));
-      loadBills();
-    }
-
-    function deleteBill(key, id) {
-      const bills = JSON.parse(localStorage.getItem(key));
-      const updated = bills.filter(b => b.id !== id);
-      localStorage.setItem(key, JSON.stringify(updated));
-      loadBills();
-    }
-
-    function toggleExpand(key) {
-      if (expandedKeys.has(key)) expandedKeys.delete(key);
-      else expandedKeys.add(key);
-      loadBills();
-    }
-
-    function toggleHistory(key) {
-      if (shownHistory.has(key)) shownHistory.delete(key);
-      else shownHistory.add(key);
-      loadBills();
-    }
-
-    function shareText(text) {
-      if (navigator.share) {
-        navigator.share({ text }).catch(() => alert("Share canceled or unsupported."));
-      } else {
-        navigator.clipboard.writeText(text).then(() => alert("Copied to clipboard!"));
-      }
-    }
-
-    function printText(text) {
-      const win = window.open('', '', 'width=600,height=600');
-      win.document.write(`<pre>${text}</pre>`);
-      win.document.close();
-      win.print();
-    }
-
-    function updateHistoryStatus(key, index, status) {
-      const bills = JSON.parse(localStorage.getItem(key));
-      bills[0].history[index].status = status;
-      localStorage.setItem(key, JSON.stringify(bills));
-      loadBills();
-    }
-
-    // Dark Mode toggle
-    document.getElementById("darkModeToggle").addEventListener("click", () => {
-      const html = document.documentElement;
-      if (html.classList.contains("dark")) {
-        html.classList.remove("dark");
-        localStorage.setItem("darkMode", "light");
-      } else {
-        html.classList.add("dark");
-        localStorage.setItem("darkMode", "dark");
-      }
+    let total = 0;
+    bills.forEach(b => {
+      lines.push(`#${b.id} | ${b.date}`);
+      lines.push(`Notes: ${b.notes}`);
+      lines.push(`Total: ₹${b.final}`);
+      lines.push("");
+      total += b.final;
     });
 
-    // Apply dark mode on load
-    if (localStorage.getItem("darkMode") === "dark") {
-      document.documentElement.classList.add("dark");
+    const pending = Math.max(0, total - amountGiven);
+    lines.push(`Amount Given: ₹${amountGiven}`);
+    lines.push(`Grand Total: ₹${total}`);
+    lines.push(`Balance: ₹${pending}`);
+    lines.push(`UPI ID: ${UPI_ID}`);
+    lines.push(`Scan QR: ${QR_URL}`);
+
+    const history = bills[0].history || [];
+    if (history.length) {
+      lines.push("\n-----------  Payment History ------------");
+      history.slice().reverse().forEach((h, idx) => {
+        lines.push(`${idx + 1}) ₹${h.amount} paid on ${new Date(h.date).toLocaleString()}`);
+        lines.push(`Status: ${h.status}, Pending: ₹${h.pending}\n`);
+      });
     }
 
-    document.getElementById("searchInput").addEventListener("input", loadBills);
-    document.getElementById("statusFilter").addEventListener("change", loadBills);
-    document.addEventListener("DOMContentLoaded", loadBills);
-  </script>
+    return lines.join("\n");
+  }
+
+  function updateAmount(key, newValue) {
+    const bills = JSON.parse(localStorage.getItem(key));
+    let amountGiven = parseFloat(bills[0].amountGiven || 0);
+    let newPayment = parseFloat(newValue) || 0;
+    const total = bills.reduce((sum, b) => sum + b.final, 0);
+
+    // Step 1: Calculate balance first
+    const previousBalance = Math.max(0, total - amountGiven);
+    const remaining = Math.max(0, previousBalance - newPayment);
+    const newTotalGiven = amountGiven + newPayment;
+    const status = remaining <= 0 ? "Paid" : "Unpaid";
+    const now = new Date().toISOString();
+
+    const history = bills[0].history || [];
+    history.push({ date: now, amount: newPayment, status, pending: remaining });
+
+    bills[0] = { 
+      ...bills[0], 
+      amountGiven: newTotalGiven,
+      updatedAt: now,
+      history 
+    };
+    localStorage.setItem(key, JSON.stringify(bills));
+
+    // Update UI
+    const uniqueKey = `${bills[0].name}_${bills[0].phone}`;
+    const pendingEl = document.querySelector(`#details_${uniqueKey} .pending`);
+    const statusEl = document.querySelector(`#details_${uniqueKey} .status`);
+    const inputEl = document.querySelector(`#details_${uniqueKey} .amountInput`);
+
+    if (pendingEl) pendingEl.textContent = `₹${remaining}`;
+    if (statusEl) {
+      statusEl.textContent = status;
+      statusEl.classList.remove("text-green-600", "text-red-600");
+      statusEl.classList.add(status === "Paid" ? "text-green-600" : "text-red-600");
+    }
+
+    if (inputEl) inputEl.value = "";
+  }
+
+  function deleteBill(key, id) {
+    let bills = JSON.parse(localStorage.getItem(key) || "[]");
+    bills = bills.filter(b => b.id !== id);
+    if (bills.length) {
+      localStorage.setItem(key, JSON.stringify(bills));
+    } else {
+      localStorage.removeItem(key);
+    }
+    loadBills();
+  }
+
+  function loadBills() {
+    const container = document.getElementById("savedBillsContainer");
+    const search = document.getElementById("searchInput").value.toLowerCase();
+    const filter = document.getElementById("statusFilter").value;
+
+    container.innerHTML = "";
+    const keys = Object.keys(localStorage).filter(k => k.startsWith("bills_"));
+
+    for (let key of keys) {
+      const bills = JSON.parse(localStorage.getItem(key));
+      if (!bills.length) continue;
+
+      const { name, phone } = bills[0];
+      const uniqueKey = `${name}_${phone}`;
+      const total = bills.reduce((sum, b) => sum + b.final, 0);
+      const amountGiven = parseFloat(bills[0].amountGiven || 0);
+      const pending = Math.max(0, total - amountGiven);
+      const status = pending <= 0 ? "Paid" : "Unpaid";
+      const updated = bills[0].updatedAt ? new Date(bills[0].updatedAt).toLocaleString() : "N/A";
+      const history = bills[0].history || [];
+
+      if (search && !name.toLowerCase().includes(search) && !phone.includes(search)) continue;
+      if (filter && filter !== status) continue;
+
+      const rows = bills.map(b => `
+        <tr class="text-sm border-b">
+          <td class="p-2">#${b.id}<br>${b.date}</td>
+          <td class="p-2">${b.notes}</td>
+          <td class="p-2">${b.items.map(i => `${i.name} x${i.qty}`).join(", ")}</td>
+          <td class="p-2 text-right">₹${b.final}</td>
+          <td class="p-2 text-center">
+            <button class="text-red-500 text-xs" onclick="deleteBill('${key}', ${b.id})">Delete</button>
+          </td>
+        </tr>`).join("");
+
+      const historyRows = history.map(h => `
+        <tr class="text-sm">
+          <td class="p-2">${new Date(h.date).toLocaleString()}</td>
+          <td class="p-2">₹${h.amount}</td>
+          <td class="p-2">₹${h.pending}</td>
+          <td class="p-2">${h.status}</td>
+        </tr>`).reverse().join("");
+
+      const div = document.createElement("div");
+      div.className = "bg-white dark:bg-gray-800 p-4 rounded shadow";
+
+      div.innerHTML = `
+        <div class="flex justify-between items-center cursor-pointer" onclick="toggleExpand('${uniqueKey}')">
+          <h3 class="font-bold text-lg">${name} (${phone})</h3>
+          <span class="status ${status === 'Paid' ? 'text-green-600' : 'text-red-600'}">${status}</span>
+        </div>
+
+        <div id="details_${uniqueKey}" class="mt-3 space-y-4 ${expandedKeys.has(uniqueKey) ? '' : 'hidden'}">
+          <div class="flex justify-between items-center">
+            <a href="index1.html?name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}" class="bg-yellow-500 text-white px-3 py-1 rounded">Add Bill</a>
+          </div>
+
+          <table class="w-full border border-gray-300 dark:border-gray-600 text-sm">
+            <thead class="bg-gray-100 dark:bg-gray-700">
+              <tr><th class="p-2">Bill</th><th class="p-2">Notes</th><th class="p-2">Items</th><th class="p-2 text-right">Total</th><th class="p-2">Action</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+
+          <div class="flex flex-wrap gap-4 text-sm">
+            <div><strong>Total:</strong> ₹${total}</div>
+            <div><strong>Balance:</strong> ₹${pending}</div>
+            <div><strong>Status:</strong> <span class="status ${status === 'Paid' ? 'text-green-600' : 'text-red-600'}">${status}</span></div>
+          </div>
+
+          <div class="mt-2">
+            <label><strong>Given Amount:</strong></label>
+            <input type="number" class="ml-2 amountInput p-1 border rounded text-black w-32" placeholder="₹0" onchange="updateAmount('${key}', this.value)" />
+          </div>
+
+          <div class="flex gap-2 mt-3">
+            <button class="bg-blue-600 text-white px-3 py-1 rounded text-sm" onclick="shareText(\`${formatBillMessage(bills, name, phone, amountGiven)}\`)">Share</button>
+            <button class="bg-green-600 text-white px-3 py-1 rounded text-sm" onclick="printText(\`${formatBillMessage(bills, name, phone, amountGiven)}\`)">Print</button>
+            <button class="bg-gray-600 text-white px-3 py-1 rounded text-sm" onclick="toggleHistory('${uniqueKey}')">History</button>
+          </div>
+
+          <div id="history_${uniqueKey}" class="mt-3 ${shownHistory.has(uniqueKey) ? '' : 'hidden'}">
+            <table class="w-full border text-sm">
+              <thead><tr><th class="p-2">Date</th><th class="p-2">Amount</th><th class="p-2">Pending</th><th class="p-2">Status</th></tr></thead>
+              <tbody>${historyRows}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      container.appendChild(div);
+    }
+  }
+
+  function toggleExpand(key) {
+    expandedKeys.has(key) ? expandedKeys.delete(key) : expandedKeys.add(key);
+    loadBills();
+  }
+
+  function toggleHistory(key) {
+    shownHistory.has(key) ? shownHistory.delete(key) : shownHistory.add(key);
+    loadBills();
+  }
+
+  function shareText(text) {
+    if (navigator.share) navigator.share({ text });
+    else navigator.clipboard.writeText(text).then(() => alert("Copied to clipboard!"));
+  }
+
+  function printText(text) {
+    const win = window.open("", "", "width=600,height=600");
+    win.document.write(`<pre>${text}</pre>`);
+    win.document.close();
+    win.print();
+  }
+
+  // Dark Mode toggle
+  document.getElementById("darkModeToggle").addEventListener("click", () => {
+    const html = document.documentElement;
+    const isDark = html.classList.toggle("dark");
+    localStorage.setItem("darkMode", isDark ? "dark" : "light");
+  });
+
+  if (localStorage.getItem("darkMode") === "dark") {
+    document.documentElement.classList.add("dark");
+  }
+
+  document.getElementById("searchInput").addEventListener("input", loadBills);
+  document.getElementById("statusFilter").addEventListener("change", loadBills);
+  document.addEventListener("DOMContentLoaded", loadBills);
+</script>
 </body>
 </html>
